@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+.env/
+
+# Docker / runtime logs
+*.log
+docker-compose.override.yml
+
+# Database volume (generated data)
+mongo-data/
+
+# OS / IDE
+.DS_Store
+.vscode/

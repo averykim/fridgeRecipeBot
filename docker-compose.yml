@@ -1,0 +1,55 @@
+services:
+  api_server:
+    build:
+      context: .
+      dockerfile: api_server/Dockerfile
+    ports: ["5000:5000"]
+    environment:
+      ING_URL: http://ingredient_recognition:5001/recognize
+      SEARCH_URL: http://recipe_search:5002/search
+      GEN_URL: http://response_generator:5003/generate
+    depends_on:
+      - ingredient_recognition
+      - recipe_search
+      - response_generator
+
+  ingredient_recognition:
+    build:
+      context: .
+      dockerfile: ingredient_recognition/Dockerfile
+    expose: ["5001"]
+    environment:
+      SPACY_MODEL: en_core_web_sm
+
+  recipe_search:
+    build:
+      context: .
+      dockerfile: recipe_search/Dockerfile
+    expose: ["5002"]
+    ports:
+      - "5002:5002"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/recipe_db
+    depends_on:
+      - mongo
+
+  response_generator:
+    build:
+      context: .
+      dockerfile: response_generator/Dockerfile
+    expose: ["5003"]
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports: ["27017:27017"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mongo-data:

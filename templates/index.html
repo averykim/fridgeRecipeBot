@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Chatbot</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 350px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            height: 500px;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding-right: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px 0;
+            max-width: 80%;
+            word-wrap: break-word;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-message {
+            background-color: #F5FBFF;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #E5F3FD;
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            width: 80%;
+        }
+
+        .send-button {
+            padding: 10px;
+            background-color: #AECCE4;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-left: 10px;
+            width: 18%;
+            align-self: flex-end;
+        }
+
+        .send-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>Recipe Chatbot</h2>
+        <div class="chat-box" id="chat-box">
+            <!-- Initial greeting message from the bot -->
+            <div class="chat-message bot-message"><strong>Chatbot:</strong> Looking for a recipe? Tell me what ingredients you have!</div>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <input type="text" id="ingredient-input" class="chat-input" placeholder="Enter ingredients..." />
+            <button class="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // HTML escape(prevent XSS)
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+        }[c]));
+
+        // Function to send message to the Flask API and get a response
+        async function sendMessage() {
+          const ingredientInput = document.getElementById("ingredient-input");
+          const chatBox = document.getElementById("chat-box");
+          const sendBtn = document.querySelector(".send-button");
+          const raw = ingredientInput.value.trim();
+      
+          if (!raw) return;
+      
+          // Show user's input in the chat box
+          chatBox.innerHTML += `<div class="chat-message user-message"><strong>You:</strong> ${esc(raw)}</div>`;
+          chatBox.scrollTop = chatBox.scrollHeight;
+      
+          // Input/Button control
+          ingredientInput.value = '';
+          sendBtn.disabled = true;
+      
+          const payload = { ingredients: raw.split(",").map(s => s.trim()).filter(Boolean) };
+      
+          try {
+            const res = await fetch('/get_info', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+      
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> ${esc(err.error || 'Server error')}</div>`;
+              chatBox.scrollTop = chatBox.scrollHeight;
+              return;
+            }
+      
+            const data = await res.json();
+      
+            // Responds to arrays/objects
+            const recipes = Array.isArray(data) ? data : (Array.isArray(data.recipes) ? data.recipes : []);
+      
+            if (recipes.length === 0) {
+              chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> ${esc(data.message || 'No recipes found.')}</div>`;
+              chatBox.scrollTop = chatBox.scrollHeight;
+              return;
+            }
+      
+            let recipeHtml = '';
+            recipes.forEach(r => {
+                recipeHtml += `<div><strong>${r.name}</strong>: ${r.instructions}</div>`;
+            });
+      
+            chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> ${recipeHtml}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+      
+          } catch (error) {
+            console.error("Error:", error);
+            chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> Oops, something went wrong!</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+          } finally {
+            sendBtn.disabled = false;
+            ingredientInput.focus();
+          }
+        }
+      
+        // Send data by Enter
+        document.getElementById('ingredient-input').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') sendMessage();
+        });
+      </script>
+      
+    
+</body>
+</html>
