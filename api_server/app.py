@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 import requests, os, time
-from settings import APP_ENV, ING_URL, SEARCH_URL, GEN_URL
+from settings import APP_ENV, ING_URL, SEARCH_URL, GEN_URL, INTENT_URL
 
 app = Flask(__name__)
 
@@ -26,6 +26,23 @@ def get_info():
     print(f"[api_server] Raw request.json: {data}", flush=True)
     ingredients = data.get("ingredients", [])
     print(f"[api_server] Extracted ingredients: {ingredients}", flush=True)
+
+    # Steo 0: Build a text string for intent classification
+    intent_text = " ".join(ingredients) if isinstance(ingredients, list) else str(ingredients)
+    intent_r = call_with_retry("POST", INTENT_URL, json={"text": intent_text})
+    intent_r.raise_for_status()
+    intent_data = intent_r.json()
+    intent = intent_data.get("intent", "ingredients_query")
+    constraints = intent_data.get("constraints", {}) or {}
+
+    # Handle Non-recipe intents
+    if intent in ("help", "greeting", "thanks"):
+        msg = {
+            "help": "Enter ingredients like: chicken, garlic, onion. You can also add constraints like 'under 20 minutes' or 'easy'.",
+            "greeting": "Hi!, Tell me what ingredients you have, and I'll suggest recipes.",
+            "thanks": "You're welcome! Want another recipe recommnedation?"
+        }[intent]
+        return jsonify({"recipes": [], "message": msg, "intent": intent}), 200
     
     # Step 1: Send ingredients to Ingredient Recognition Service
     r = call_with_retry("POST", ING_URL, json={"ingredients": ingredients})
@@ -39,7 +56,12 @@ def get_info():
 
     recipes = s.json().get("recipes", [])
     if not recipes:
-        return jsonify({"recipes": [], "message": "No recipes found"})
+        return jsonify({
+            "recipes": [], 
+            "message": "No recipes found",
+            "intent": intent,
+            "constraints": constraints
+            }), 200
 
     # Step 3: Send recipes to Response Generator
     g = call_with_retry("POST", GEN_URL, json={"recipes": recipes})
@@ -48,14 +70,24 @@ def get_info():
     result = g.json()
     # If result is an array, wrap it in { recipes: array } and return it.
     if isinstance(result, list):
-        return jsonify({"recipes": result}), 200
+        return jsonify({
+            "recipes": result,
+            "intent": intent,
+            "constraints": constraints
+            }), 200
 
     # If result is a dictionary and the recipes key is an array, return it as is.
     if isinstance(result, dict) and isinstance(result.get("recipes"), list):
+        result["intent"] = intent
+        result["constraints"] = constraints
         return jsonify(result), 200
 
     # If it’s in some other format, safely return an empty structure.
-    return jsonify({"recipes": []}), 200
+    return jsonify({
+        "recipes": [],
+        "intent": intent,
+        "constraints": constraints
+        }), 200
 
 
 if __name__ == '__main__':

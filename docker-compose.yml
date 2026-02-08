@@ -6,10 +6,12 @@ services:
     ports: ["5000:5000"]
     environment:
       ING_URL: http://ingredient_recognition:5001/recognize
+      INTENT_URL: http://intent_recognition:5004/intent
       SEARCH_URL: http://recipe_search:5002/search
       GEN_URL: http://response_generator:5003/generate
     depends_on:
       - ingredient_recognition
+      - intent_recognition
       - recipe_search
       - response_generator
 
@@ -18,6 +20,14 @@ services:
       context: .
       dockerfile: ingredient_recognition/Dockerfile
     expose: ["5001"]
+    environment:
+      SPACY_MODEL: en_core_web_sm
+
+  intent_recognition:
+    build:
+      context: .
+      dockerfile: intent_recognition/Dockerfile
+    expose: ["5004"]
     environment:
       SPACY_MODEL: en_core_web_sm
 
