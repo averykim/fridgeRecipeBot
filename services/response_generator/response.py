@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from settings import APP_ENV
+import settings
 
 app = Flask(__name__)
 
@@ -20,5 +20,5 @@ def generate_response():
     return jsonify({"recipes": response})
 
 if __name__ == '__main__':
-    print(f"[generate] APP_ENV={APP_ENV}")
+    print(f"[generate] APP_ENV={settings.APP_ENV}")
     app.run(debug=True, host='0.0.0.0', port=5003)

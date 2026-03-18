@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import PyMongoError
-from settings import APP_ENV, MONGO_URI
+import settings
 import logging, os, time
 import requests
 
@@ -9,7 +9,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # Connect MongoDB 
-client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=30000)
+client = MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=30000)
 db = client.get_default_database()  # recipe_db
 recipes_collection = db.recipes
 
@@ -17,13 +17,6 @@ recipes_collection = db.recipes
 recipes_collection.create_index([("source", ASCENDING), ("source_id", ASCENDING)], unique = True)
 recipes_collection.create_index([("ingredients", ASCENDING)])
 recipes_collection.create_index([("cached_at", DESCENDING)])
-
-# API: TheMealDB
-# www.themealdb.com/api/json/v1/1/list.php?i=list
-THEMEALDB_KEY = os.getenv("THEMEALDB_KEY", "1") #Test Key
-THEMEALDB_BASE = f"https://www.themealdb.com/api/json/v1/{THEMEALDB_KEY}/list.php?i=list"
-HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "6.0"))
-OFFLINE_MODE = os.getenv("OFFLINE_MODE", "false").lower() == "true"
 
 def norm(s:str) -> str:
     return (s or "").strip().lower()
@@ -37,16 +30,16 @@ def extract_ingredients(meal: dict) -> list[str]:
     return sorted(set([x for x in out if x]))
 
 def themealdb_filter_by_ingredient(ingredient: str) -> list[str]:
-    url = f"{THEMEALDB_BASE}/filter.php"
-    r = requests.get(url, params = {"i": ingredient}, timeout = HTTP_TIMEOUT)
+    url = f"{settings.THEMEALDB_BASE}/filter.php"
+    r = requests.get(url, params = {"i": ingredient}, timeout = settings.HTTP_TIMEOUT)
     r.raise_for_status()
     data = r.json()
     meals = data.get("meals") or []
     return [m.get("idMeal") for m in meals if m.get("idMeal")]
 
 def themealdb_lookup(meal_id:str) -> dict | None:
-    url = f"{THEMEALDB_BASE}/lookup.php"
-    r = requests.get(url, params = {"i": meal_id}, timeout = HTTP_TIMEOUT)
+    url = f"{settings.THEMEALDB_BASE}/lookup.php"
+    r = requests.get(url, params = {"i": meal_id}, timeout = settings.HTTP_TIMEOUT)
     r.raise_for_status()
     data = r.json()
     arr = data.get("meals") or []
@@ -147,7 +140,7 @@ def db_search_scored(ingredients: list[str], limit: int = 10) -> list[dict]:
 def health():
     try:
         client.admin.command("ping")
-        return jsonify({"status": "ok", "env": APP_ENV, "offline_mode": OFFLINE_MODE}), 200
+        return jsonify({"status": "ok", "env": settings.APP_ENV, "offline_mode": settings.OFFLINE_MODE}), 200
     except Exception as e:
         app.logger.exception("Mongo ping failed")
         return jsonify({"status": "bad", "error": str(e)}), 500
@@ -165,9 +158,9 @@ def search_recipes():
         
         # 1. DB first
         recipes_list = db_search_scored(ingredients, limit=limit)
-        if len(recipes_list) >= limit or OFFLINE_MODE:
+        if len(recipes_list) >= limit or settings.OFFLINE_MODE:
             return jsonify({
-                "mode": "db_only" if OFFLINE_MODE else "db_cache",
+                "mode": "db_only" if settings.OFFLINE_MODE else "db_cache",
                 "recipes": recipes_list
             }), 200
         
@@ -191,5 +184,5 @@ def search_recipes():
         return jsonify({"error": f"Server error: {e}"}), 500
 
 if __name__ == "__main__":
-    print(f"[search] APP_ENV={APP_ENV}, MONGO_URI={MONGO_URI}")
+    print(f"[search] APP_ENV={settings.APP_ENV}, MONGO_URI={settings.MONGO_URI}")
     app.run(debug=True, host="0.0.0.0", port=5002)

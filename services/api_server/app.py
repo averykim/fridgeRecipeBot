@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 import requests, os, time
-from settings import APP_ENV, ING_URL, SEARCH_URL, GEN_URL, INTENT_URL
+import settings
 
 app = Flask(__name__)
 
@@ -29,7 +29,7 @@ def get_info():
 
     # Steo 0: Build a text string for intent classification
     intent_text = " ".join(ingredients) if isinstance(ingredients, list) else str(ingredients)
-    intent_r = call_with_retry("POST", INTENT_URL, json={"text": intent_text})
+    intent_r = call_with_retry("POST", settings.INTENT_URL, json={"text": intent_text})
     intent_r.raise_for_status()
     intent_data = intent_r.json()
     intent = intent_data.get("intent", "ingredients_query")
@@ -45,13 +45,13 @@ def get_info():
         return jsonify({"recipes": [], "message": msg, "intent": intent}), 200
     
     # Step 1: Send ingredients to Ingredient Recognition Service
-    r = call_with_retry("POST", ING_URL, json={"ingredients": ingredients})
-    print(f"[api_server] Sent to ING_URL ({ING_URL}): {{'ingredients': {ingredients}}}", flush=True)
+    r = call_with_retry("POST", settings.ING_URL, json={"ingredients": ingredients})
+    print(f"[api_server] Sent to ING_URL ({settings.ING_URL}): {{'ingredients': {ingredients}}}", flush=True)
     r.raise_for_status()
     recognized = r.json().get("recognized_ingredients", [])
 
     # Step 2: Send recognized ingredients to Recipe Search Service
-    s = call_with_retry("POST", SEARCH_URL, json={"ingredients": recognized})
+    s = call_with_retry("POST", settings.SEARCH_URL, json={"ingredients": recognized})
     s.raise_for_status()
 
     recipes = s.json().get("recipes", [])
@@ -64,7 +64,7 @@ def get_info():
             }), 200
 
     # Step 3: Send recipes to Response Generator
-    g = call_with_retry("POST", GEN_URL, json={"recipes": recipes})
+    g = call_with_retry("POST", settings.GEN_URL, json={"recipes": recipes})
     g.raise_for_status()
 
     result = g.json()
@@ -91,5 +91,5 @@ def get_info():
 
 
 if __name__ == '__main__':
-    print(f"[app] APP_ENV={APP_ENV}")
+    print(f"[app] APP_ENV={settings.APP_ENV}")
     app.run(debug=True, host='0.0.0.0', port=5000)

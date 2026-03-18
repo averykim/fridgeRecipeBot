@@ -2,64 +2,99 @@ services:
   api_server:
     build:
       context: .
-      dockerfile: api_server/Dockerfile
-    ports: ["5000:5000"]
+      dockerfile: services/api_server/Dockerfile
+    ports:
+      - "5000:5000"
     environment:
-      ING_URL: http://ingredient_recognition:5001/recognize
-      INTENT_URL: http://intent_recognition:5004/intent
-      SEARCH_URL: http://recipe_search:5002/search
-      GEN_URL: http://response_generator:5003/generate
+      - ING_URL=http://ingredient_recognition:5001/recognize
+      - INTENT_URL=http://intent_recognition:5004/intent
+      - SEARCH_URL=http://recipe_search:5002/search
+      - GEN_URL=http://response_generator:5003/generate
+    volumes:
+      - ./settings.py:/app/settings.py
+    env_file:
+      - .env.local
     depends_on:
       - ingredient_recognition
       - intent_recognition
       - recipe_search
       - response_generator
+    networks:
+      - recipe_net
 
   ingredient_recognition:
     build:
       context: .
-      dockerfile: ingredient_recognition/Dockerfile
-    expose: ["5001"]
+      dockerfile: services/ingredient_recognition/Dockerfile
+    expose:
+      - "5001"
     environment:
-      SPACY_MODEL: en_core_web_sm
+      - SPACY_MODEL=en_core_web_sm
+    volumes:
+      - ./settings.py:/app/settings.py
+    networks:
+      - recipe_net
 
   intent_recognition:
     build:
       context: .
-      dockerfile: intent_recognition/Dockerfile
-    expose: ["5004"]
+      dockerfile: services/intent_recognition/Dockerfile
+    expose:
+      - "5004"
     environment:
-      SPACY_MODEL: en_core_web_sm
+      - SPACY_MODEL=en_core_web_sm
+    volumes:
+      - ./settings.py:/app/settings.py
+    networks:
+      - recipe_net
 
   recipe_search:
     build:
       context: .
-      dockerfile: recipe_search/Dockerfile
-    expose: ["5002"]
+      dockerfile: services/recipe_search/Dockerfile
+    expose: 
+      - "5002"
     ports:
       - "5002:5002"
     environment:
       MONGO_URI: mongodb://mongo:27017/recipe_db
+    volumes:
+      - ./settings.py:/app/settings.py
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    networks:
+      - recipe_net
 
   response_generator:
     build:
       context: .
-      dockerfile: response_generator/Dockerfile
-    expose: ["5003"]
+      dockerfile: services/response_generator/Dockerfile
+    expose:
+      - "5003"
+    volumes:
+      - ./settings.py:/app/settings.py
+    networks:
+      - recipe_net
 
   mongo:
     image: mongo:7
     restart: unless-stopped
-    ports: ["27017:27017"]
+    ports:
+      - "27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 10
+    networks:
+      - recipe_net
+
+networks:
+  recipe_net:
+    driver: bridge
 
 volumes:
   mongo-data:
