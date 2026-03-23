@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 import spacy, os, re
-from settings import APP_ENV
+import settings
 
 app = Flask(__name__)
 # Load SpaCy's English model
@@ -38,5 +38,5 @@ def recognize_ingredients():
     return jsonify({"recognized_ingredients": final_list})
 
 if __name__ == '__main__':
-    print(f"[recognize] APP_ENV={APP_ENV}")
+    print(f"[recognize] APP_ENV={settings.APP_ENV}")
     app.run(debug=True, host='0.0.0.0', port=5001)
