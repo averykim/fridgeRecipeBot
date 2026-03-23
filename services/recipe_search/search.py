@@ -10,7 +10,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Connect MongoDB 
 client = MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=30000)
-db = client.get_default_database()  # recipe_db
+# db = client.get_default_database()  # recipe_db
+db = client["recipe_db"]
 recipes_collection = db.recipes
 
 # Indexing
@@ -42,8 +43,11 @@ def themealdb_lookup(meal_id:str) -> dict | None:
     r = requests.get(url, params = {"i": meal_id}, timeout = settings.HTTP_TIMEOUT)
     r.raise_for_status()
     data = r.json()
-    arr = data.get("meals") or []
-    return arr[0] if arr else None
+    meals = data.get("meals")
+    if not meals:
+        logging.warning(f"No meal found for ID: {meal_id}")
+        return None
+    return meals[0]
 
 def cache_meal_to_db(meal: dict) -> None:
     ing = extract_ingredients(meal)
@@ -69,32 +73,30 @@ def cache_meal_to_db(meal: dict) -> None:
 def fetch_from_api(ingredients: list[str], max_ids: int = 20) -> int:
     ids = set()
     for ing in ingredients:
-        ing = norm(ing)
-        if not ing:
-            continue
-        
         # filter
         try:
-            for mid in themealdb_filter_by_ingredient(ing):
+            found_ids = themealdb_filter_by_ingredient(ing)
+            app.logger.info(f"API found {len(found_ids)} recipes for ingredients: {ing}")
+            for mid in found_ids:
                 ids.add(mid)
-                if len(ids) >= max_ids:
-                    break
-
-        except requests.RequestException as e:
-            app.logger.error(e)
-        if len(ids) >= max_ids:
-            break
+                if len(ids) >= max_ids: break
+        except Exception as e:
+            app.logger.error(f"Filter failed for {ing}: {e}")
+        if len(ids) >= max_ids: break
 
     # Lookup
     added = 0
     for mid in list(ids):
         try:
-            meal = themealdb_lookup(mid)
-            if not meal:
-                break
-            cache_meal_to_db(meal)
-            added += 1
-        except (requests.RequestException, PyMongoError):
+           if recipes_collection.find_one({"source": "themealdb", "source_id": mid}):
+               continue
+           meal = themealdb_lookup(mid)
+           if meal:
+               cache_meal_to_db(meal)
+               added +=1
+               app.logger.info(f"Successfully cached: {meal.get('strMeal')}")
+        except Exception as e:
+            app.logger.error(f"Error caching meal {mid}: {e}")
             continue
     return added
 
@@ -111,9 +113,9 @@ def db_search_scored(ingredients: list[str], limit: int = 10) -> list[dict]:
             "name": 1,
             "instructions": 1,
             "ingredients": 1,
-            "cached_at": 1
+            "cached_at": 1,
             }
-    ).limit(limit)
+    ).limit(limit * 2)
 
     results = list(cursor)
     ing_set = set(ingredients)
@@ -133,7 +135,7 @@ def db_search_scored(ingredients: list[str], limit: int = 10) -> list[dict]:
 
     results.sort(key=lambda x: (x["_score"], x.get("cached_at", 0)), reverse = True)
     
-    return results
+    return results[:limit]
 
 # Check if a server is responding to commands
 @app.route("/health", methods=["GET"])
@@ -158,20 +160,19 @@ def search_recipes():
         
         # 1. DB first
         recipes_list = db_search_scored(ingredients, limit=limit)
-        if len(recipes_list) >= limit or settings.OFFLINE_MODE:
-            return jsonify({
-                "mode": "db_only" if settings.OFFLINE_MODE else "db_cache",
-                "recipes": recipes_list
-            }), 200
-        
-        # 2. Use API if there is no data in db
-        cached_added = fetch_from_api(ingredients, max_ids=20)
+        if len(recipes_list) < limit and not settings.OFFLINE_MODE:
+            app.logger.info("Not enough results in DB. Fetching from API...")
+            cached_added = fetch_from_api(ingredients, max_ids=20)
 
-        # 3. Retrieve data from DB again
-        recipes_list = db_search_scored(ingredients, limit=limit)
+            # After call API, retrieve 
+            if cached_added > 0:
+                recipes_list = db_search_scored(ingredients, limit=limit)
+
+        else:
+            cached_added = 0
 
         return jsonify({
-            "mode": "api_and_cache",
+            "mode": "db_only" if settings.OFFLINE_MODE else "api_check",
             "cached_added": cached_added,
             "recipes": recipes_list
         }), 200

@@ -68,19 +68,24 @@ def get_info():
     g.raise_for_status()
 
     result = g.json()
+   
+   # If result is a dictionary and the recipes key is an array, return it as is.
+    if isinstance(result, dict) and isinstance(result.get("recipes"), list):
+        return jsonify({
+            "recipes": result.get("recipes", []),
+            "message": result.get("full_message", "No message generated"),
+            "intent": intent,
+            "constraints": constraints
+        }), 200
+   
     # If result is an array, wrap it in { recipes: array } and return it.
     if isinstance(result, list):
         return jsonify({
             "recipes": result,
             "intent": intent,
+            "message": "Recipe generated",
             "constraints": constraints
             }), 200
-
-    # If result is a dictionary and the recipes key is an array, return it as is.
-    if isinstance(result, dict) and isinstance(result.get("recipes"), list):
-        result["intent"] = intent
-        result["constraints"] = constraints
-        return jsonify(result), 200
 
     # If it’s in some other format, safely return an empty structure.
     return jsonify({

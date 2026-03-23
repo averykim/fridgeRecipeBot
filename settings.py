@@ -5,7 +5,7 @@ APP_ENV = os.getenv("APP_ENV", "docker").lower()
 # API: TheMealDB
 # www.themealdb.com/api/json/v1/1/list.php?i=list
 THEMEALDB_KEY = os.getenv("THEMEALDB_KEY", "1")
-THEMEALDB_BASE = f"https://www.themealdb.com/api/json/v1/{THEMEALDB_KEY}/list.php?i=list"
+THEMEALDB_BASE = f"https://www.themealdb.com/api/json/v1/{THEMEALDB_KEY}"
 HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "6.0"))
 OFFLINE_MODE = os.getenv("OFFLINE_MODE", "false").lower() == "true"
 
