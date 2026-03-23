@@ -5,6 +5,7 @@ __pycache__/
 # Virtual environment
 venv/
 .env/
+.env.local
 
 # Docker / runtime logs
 *.log

@@ -90,6 +90,7 @@
         }
     </style>
 </head>
+<script src="https://cdn.jsdeliever.net/npm/marked/marked.min.js"></script>
 <body>
     <div class="chat-container">
         <h2>Recipe Chatbot</h2>
@@ -143,22 +144,27 @@
             }
       
             const data = await res.json();
-      
-            // Responds to arrays/objects
-            const recipes = Array.isArray(data) ? data : (Array.isArray(data.recipes) ? data.recipes : []);
-      
-            if (recipes.length === 0) {
-              chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> ${esc(data.message || 'No recipes found.')}</div>`;
-              chatBox.scrollTop = chatBox.scrollHeight;
-              return;
+            // Print formatted message if data is formatted
+            if (data.message) {
+              const htmlContent = typeof marked !== 'undefined' 
+              ? marked.parse(data.message) : data.message.replace(/\n/g, '<br>')
+
+              chatBox.innerHTML += `<div class = "chat-message bot-message"><strong>Chatbot:</strong><br>
+                ${htmlContent}</div>`;
+            } else if (data.recipes && data.recipes.length > 0){
+              let recipeHtml = '';
+              data.recipes.forEach(r => {
+                const content = r.message || r.instructions || 'No details available';
+                recipeHtml += `<div style = "margin-bottom: 10px;"><strong>${esc(r.name)}</strong>: 
+                  ${content.replace(/\n/g, '<br>')}</div>`;
+              });
+              chatBox.innerHTML += `<div class = "chat-message bot-message"><strong>Chatbot:</strong><br>
+                ${recipeHtml}</div>`;
+            } else {
+              chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> 
+                ${esc(data.message || "No recipe found.")}</div>`;
             }
-      
-            let recipeHtml = '';
-            recipes.forEach(r => {
-                recipeHtml += `<div><strong>${r.name}</strong>: ${r.instructions}</div>`;
-            });
-      
-            chatBox.innerHTML += `<div class="chat-message bot-message"><strong>Chatbot:</strong> ${recipeHtml}</div>`;
+
             chatBox.scrollTop = chatBox.scrollHeight;
       
           } catch (error) {
