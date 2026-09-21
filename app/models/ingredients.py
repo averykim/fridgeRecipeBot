@@ -1,6 +1,6 @@
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from core.database import Base
+from app.core.database import Base
 
 
 class Ingredient(Base):
