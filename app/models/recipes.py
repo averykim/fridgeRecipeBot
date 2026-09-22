@@ -12,7 +12,7 @@ class Recipe(Base):
     name: Mapped[str] = mapped_column(String(100))
     steps: Mapped[str] = mapped_column(Text)
     image: Mapped[str | None] = mapped_column(Text)
-    cooking_time: Mapped[int] = mapped_column(Integer)
+    cooking_time: Mapped[int | None] = mapped_column(Integer)
     language: Mapped[str] = mapped_column(String(50), default="en")
     
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())

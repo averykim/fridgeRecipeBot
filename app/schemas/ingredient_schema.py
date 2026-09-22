@@ -1,17 +1,19 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 class IngredientAliasBase(BaseModel):
-    alias_name: str
+    alias_name: str = Field(min_length=1)
     language: str = "en"
     
 class IngredientAliasResponse(IngredientAliasBase):
     id: int
     ingredient_id: int
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # Common (Create and Response)
 class IngredientBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     category: str
     calories: Optional[int] = None
     
