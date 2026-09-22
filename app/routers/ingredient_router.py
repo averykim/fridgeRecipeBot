@@ -5,11 +5,11 @@ from sqlalchemy.orm import selectinload
 from typing import List
 
 #schema
-from schemas.ingredient_schema import IngredientResponse, IngredientCreate
+from app.schemas.ingredient_schema import IngredientResponse, IngredientCreate
 #models
-from models.ingredients import Ingredient, IngredientAlias
+from app.models.ingredients import Ingredient, IngredientAlias
 #db
-from core.database import get_db
+from app.core.database import get_db
 
 router = APIRouter(prefix='/ingredients', tags=['Ingredients'])
 

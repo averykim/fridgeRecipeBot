@@ -1,15 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm.orm import selectinload
+from sqlalchemy.orm import selectinload
 from typing import List
 
 #schema
-from schemas.recipe_schema import RecipeResponse, RecipeCreate
+from app.schemas.recipe_schema import RecipeResponse, RecipeCreate
 #models
-from models.recipes import Recipe, RecipeIngredient
+from app.models.recipes import Recipe, RecipeIngredient
 #db
-from core.database import get_db
+from app.core.database import get_db
 
 router = APIRouter(prefix='/recipes', tags=['Recipes'])
 
