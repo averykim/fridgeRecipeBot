@@ -23,3 +23,4 @@ class IngredientAlias(Base):
     alias_name: Mapped[str] = mapped_column(String(50))
     ingredient_id: Mapped[int] = mapped_column(ForeignKey("ingredients.id", ondelete="CASCADE"))
     ingredient: Mapped["Ingredient"] = relationship("Ingredient", back_populates="aliases")
+    language:Mapped[str] = mapped_column(String(50), default="en")

@@ -27,7 +27,7 @@ async def create_ingredient(ingredient_in: IngredientCreate, db: AsyncSession = 
     # if aliases exist
     if ingredient_in.aliases:
         for alias_data in ingredient_in.aliases:
-            db_alias = IngredientAlias(alias_name=alias_data,
+            db_alias = IngredientAlias(alias_name=alias_data.alias_name,
                                        ingredient_id=db_ingredient.id,  # connect parent's id from above
                                        language=alias_data.language
                                        )

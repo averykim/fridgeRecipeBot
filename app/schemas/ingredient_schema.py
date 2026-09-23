@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class IngredientAliasBase(BaseModel):
     alias_name: str = Field(min_length=1)
@@ -19,7 +20,7 @@ class IngredientBase(BaseModel):
     
 # Data create: client -> API
 class IngredientCreate(IngredientBase):
-    aliases: Optional[list[str]] = []
+    aliases: Optional[List[IngredientAliasBase]] = []
     
 # Data response: API -> client
 class IngredientResponse(IngredientBase):
