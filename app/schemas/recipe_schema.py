@@ -16,10 +16,14 @@ class RecipeIngredientResponse(RecipeIngredientBase):
     model_config = ConfigDict(from_attributes=True)
 
 class RecipeBase(BaseModel):
-    name: str = Field(min_length=2)
-    steps: str = Field(min_length=10)
+    title: str = Field(min_length=2)
+    description: Optional[str] = None
+    instructions: str = Field(min_length=10)
     image: Optional[str] = None
-    cooking_time: Optional[int] = None
+    cooking_time: Optional[int] = None    
+    difficulty: Optional[str] = None
+    diet_type: Optional[str] = None
+    style: Optional[str] = None
     language: str = "en"
     
 class RecipeCreate(RecipeBase):
@@ -29,6 +33,7 @@ class RecipeResponse(RecipeBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    source: str
     
     recipe_ingredients: List[RecipeIngredientCreate] = []
     model_config = ConfigDict(from_attributes=True)
