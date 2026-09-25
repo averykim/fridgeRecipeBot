@@ -1,0 +1,14 @@
+name: fridge-app-test
+
+services:
+  db_test:
+    image: postgres:15-alpine
+    container_name: fridge-postgres-test
+    environment:
+      POSTGRES_USER: fridge
+      POSTGRES_PASSWORD: fridgepass
+      POSTGRES_DB: fridgedb_test
+    ports:
+      - "5435:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
