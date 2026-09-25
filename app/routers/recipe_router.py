@@ -12,6 +12,7 @@ from app.core.database import get_db
 #services
 from app.services.recommend_service import find_recipe_in_db
 from app.services.ai_recipe_service import generate_recipe_ai
+from app.services.recipe_service import get_recipe_by_id, create_recipe_in_db
 
 router = APIRouter(prefix='/recipes', tags=['Recipes'])
 
@@ -62,40 +63,14 @@ async def recommend_recipe(ingredients: List[str] = Body(..., description="List 
 # User creates own recipe
 @router.post('/create', response_model=RecipeResponse)
 async def create_recipe(recipe_in: RecipeCreate, db: AsyncSession = Depends(get_db)):
-    db_recipe = Recipe(
-        name=recipe_in.name, 
-        steps=recipe_in.steps,
-        image=recipe_in.image,
-        cooking_time=recipe_in.cooking_time,
-        language=recipe_in.language
-    )
+    return create_recipe_in_db(db=db, recipe_in=recipe_in)
 
-    db.add(db_recipe)
-    await db.commit()
-    await db.refresh(db_recipe)
-
-    for ingredient in recipe_in.recipe_ingredients:
-        db_ingredient = RecipeIngredient(
-            recipe_id=db_recipe.id,
-            ingredient_id=ingredient.ingredient_id,
-            amount=ingredient.amount
-        )
-        db.add(db_ingredient)
-        
-    await db.commit()
-    await db.refresh(db_recipe, attribute_names=['recipe_ingredients'])
-
-    return db_recipe
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
 async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
-    # stmt = select(Recipe).options(selectinload(Recipe.recipe_ingredients)).where(Recipe.id == recipe_id)
-    # result = await db.execute(stmt)
+    db_recipe = await get_recipe_by_id(db=db, recipe_id=recipe_id)
     
-    # db_recipe = result.scalar_one_or_none()
+    if db_recipe is None:
+        raise HTTPException(status_code=404, detail="Cannot find the recipe")
     
-    # if db_recipe is None:
-    #     raise HTTPException(status_code=404, detail="Cannot find the recipe")
-    
-    # return db_recipe
-    pass
+    return db_recipe
