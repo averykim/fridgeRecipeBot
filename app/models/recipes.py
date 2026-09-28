@@ -14,9 +14,9 @@ class Recipe(Base):
     instructions: Mapped[str] = mapped_column(Text)
     image: Mapped[str | None] = mapped_column(Text)
     cooking_time: Mapped[int | None] = mapped_column(Integer)
-    difficulty: Mapped[str | None] = map(String(150))
-    diet_type: Mapped[str | None] = map(String(150))
-    style: Mapped[str | None] = map(String(150))
+    difficulty: Mapped[str | None] = mapped_column(String(150))
+    diet_type: Mapped[str | None] = mapped_column(String(150))
+    style: Mapped[str | None] = mapped_column(String(150))
     language: Mapped[str] = mapped_column(String(50), default="en")
     source: Mapped[str] = mapped_column(String(200), default="user")
     

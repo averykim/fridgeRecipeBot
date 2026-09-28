@@ -16,7 +16,7 @@ from app.services.recipe_service import get_recipe_by_id, create_recipe_in_db
 
 router = APIRouter(prefix='/recipes', tags=['Recipes'])
 
-@router.post('/recommend', RecipeResponse)
+@router.post('/recommend', response_model=RecipeResponse)
 async def recommend_recipe(ingredients: List[str] = Body(..., description="List of ingredients input by the user"),
                            style: str = Body("home cooking", description="Desired cooking style"),
                            diet_type: str | None = Body(None, description="Dietary restrictions"),
@@ -63,7 +63,7 @@ async def recommend_recipe(ingredients: List[str] = Body(..., description="List 
 # User creates own recipe
 @router.post('/create', response_model=RecipeResponse)
 async def create_recipe(recipe_in: RecipeCreate, db: AsyncSession = Depends(get_db)):
-    return create_recipe_in_db(db=db, recipe_in=recipe_in)
+    return await create_recipe_in_db(db=db, recipe_in=recipe_in)
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)

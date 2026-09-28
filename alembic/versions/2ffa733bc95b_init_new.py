@@ -1,8 +1,8 @@
-"""init
+"""init_new
 
-Revision ID: 7f5f277e0553
+Revision ID: 2ffa733bc95b
 Revises: 
-Create Date: 2026-09-21 15:43:10.542892
+Create Date: 2026-09-27 21:56:35.502469
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7f5f277e0553'
+revision: str = '2ffa733bc95b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,11 +32,16 @@ def upgrade() -> None:
     op.create_index(op.f('ix_ingredients_name'), 'ingredients', ['name'], unique=True)
     op.create_table('recipes',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False),
-    sa.Column('steps', sa.Text(), nullable=False),
+    sa.Column('title', sa.String(length=100), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('instructions', sa.Text(), nullable=False),
     sa.Column('image', sa.Text(), nullable=True),
-    sa.Column('cooking_time', sa.Integer(), nullable=False),
+    sa.Column('cooking_time', sa.Integer(), nullable=True),
+    sa.Column('difficulty', sa.String(length=150), nullable=True),
+    sa.Column('diet_type', sa.String(length=150), nullable=True),
+    sa.Column('style', sa.String(length=150), nullable=True),
     sa.Column('language', sa.String(length=50), nullable=False),
+    sa.Column('source', sa.String(length=200), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -46,6 +51,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('alias_name', sa.String(length=50), nullable=False),
     sa.Column('ingredient_id', sa.Integer(), nullable=False),
+    sa.Column('language', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['ingredient_id'], ['ingredients.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )

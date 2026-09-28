@@ -5,15 +5,15 @@ from app.models.recipes import Recipe, RecipeIngredient
 from app.models.ingredients import Ingredient, IngredientAlias
 
 async def find_recipe_in_db(db: AsyncSession,
-                            ingredient_names:list[str],
+                            ingredients_name:list[str],
                             style: str | None = None,
                             diet_type: str | None = None,
                             language: str = "en"
                             ):
     # 1. convert ingredients to ingredient id array
     stmt_ids = select(Ingredient.id).outerjoin(IngredientAlias).where(
-        (Ingredient.name.in_(ingredient_names)) | 
-        (IngredientAlias.alias_name.in_(ingredient_names)))
+        (Ingredient.name.in_(ingredients_name)) | 
+        (IngredientAlias.alias_name.in_(ingredients_name)))
     result_ids = await db.execute(stmt_ids)
     user_ingredient_ids = result_ids.scalars().all()
     

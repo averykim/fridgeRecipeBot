@@ -1,6 +1,7 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,4 +29,11 @@ class Base(DeclarativeBase):
 
 async def get_db():
     async with async_session_maker() as session:
-        yield session
+        try:    
+            yield session
+        except asyncio.CancelledError:
+            await session.rollback()
+            raise
+        except Exception:
+            await session.rollback()
+            raise

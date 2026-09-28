@@ -1,5 +1,5 @@
 import json
-import google as genai
+from google import genai
 from google.genai import types
 from app.schemas.recipe_schema import RecipeCreate
 from app.core.config import settings
@@ -19,29 +19,33 @@ async def generate_recipe_ai(ingredients: list[str],
     diet_condition = f"The dish must strictly adhere to this diet: '{diet_type}.'" if diet_type else ""
 
     prompt = f"""
-    You are an expert chef. Recommend exactly One recipe that best utilizes the following ingredients: {ingredients_str}.
+    You are an expert chef. Recommend exactly ONE recipe that best utilizes the following ingredients: {ingredients_str}.
+    You may add essential basic ingredients (e.g., salt, oil) or complementary ingredients to complete the dish.
     
     [Additional Requirements]
     {style_condition}
     {diet_condition}
     
     [Language & Output Format Requirements]
-    - All JSON Keys MUST reamin in English.
-    - All JSON Values (title, description, instructions, ets.) MUST be written in the language corresponding to this language code: '{language}'.
-    - Do NOT include any explanations, greetings, or markdown formatting (like ```json). Return ONLY a raw JSON object.
+    - All JSON Keys MUST remain in English.
+    - All JSON Values (title, description, instructions, etc.) MUST be written in the language corresponding to this language code: '{language}'.
+    - Do NOT include any explanations, greetings, or markdown formatting (like ```json). Return ONLY a raw JSON object matching the exact structure below.
     
     {{
         "title": "Recipe Name",
         "description": "Brief description of the dish",
         "instructions": "1. First step\n2. Second step",
         "cooking_time": 30,
-        "difficulty": "Medium"
+        "difficulty": "Medium",
+        "recipe_ingredients": [
+            {{ "name": "Ingredient Name", "quantity": "Amount (e.g., 200g, 1 tbsp)" }}
+        ]
     }}
-    """
+"""
 
     # call async
     response = await client.aio.models.generate_content(
-        model='genemi-1.5-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
