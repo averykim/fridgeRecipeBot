@@ -45,7 +45,7 @@ async def generate_recipe_ai(ingredients: list[str],
 
     # call async
     response = await client.aio.models.generate_content(
-        model='gemini-3.5-flash',
+        model='gemini-3.5-flash-lite',
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
