@@ -3,6 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.models.recipes import Recipe, RecipeIngredient
 from app.schemas.recipe_schema import RecipeCreate
+from app.utils.similarity import calculate_jaccard_similarity, calculate_text_similarity
 
 # GET
 async def get_recipe_by_id(db: AsyncSession, recipe_id: int) -> Recipe | None:
@@ -43,4 +44,37 @@ async def create_recipe_in_db(db: AsyncSession, recipe_in: RecipeCreate) -> Reci
         
     await db.refresh(db_recipe, attribute_names=['recipe_ingredients'])
     return db_recipe
-    
+
+
+async def check_advanced_duplicate(db:AsyncSession,
+                                   title: str,
+                                   input_ingredients: list[str],
+                                   input_instructions: str,
+                                   ingredient_threshold: float = 0.8,
+                                   text_threshold: float = 0.75
+                                   ):
+    input_set = set(ing.strip().lower() for ing in input_ingredients)
+
+    # First, extract similar title by DB query
+    stmt = (select(Recipe)
+            .options(selectinload(Recipe.recipe_ingredients))
+            .wehre(Recipe.title.ilike(f"%{title.strip()}"))
+            )
+    result = await db.execute(stmt)
+    candidate_recipes = result.scalars().all()
+
+    for recipe in candidate_recipes:
+        existing_set = set(ing.name.lower() for ing in recipe.ingredients)
+
+        # Second, compare ingredients (Jaccard)
+        ing_score = calculate_jaccard_similarity(input_set, existing_set)
+
+        # execute when 80% of ingredients are similar
+        if ing_score >= ingredient_threshold:
+            # Third, recipe context check (TF-IDF & cosine)
+            text_score =  calculate_text_similarity(input_instructions, recipe.instructions)
+
+            if text_score >= text_threshold:
+                return recipe, ing_score, text_score
+
+        return None, 0.0, 0.0

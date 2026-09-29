@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -12,7 +12,12 @@ from app.core.database import get_db
 #services
 from app.services.recommend_service import find_recipe_in_db
 from app.services.ai_recipe_service import generate_recipe_ai
-from app.services.recipe_service import get_recipe_by_id, create_recipe_in_db
+from app.services.recipe_service import (get_recipe_by_id,
+                                         create_recipe_in_db,
+                                         check_advanced_duplicate
+                                         )
+
+
 
 router = APIRouter(prefix='/recipes', tags=['Recipes'])
 
@@ -63,7 +68,27 @@ async def recommend_recipe(ingredients: List[str] = Body(..., description="List 
 # User creates own recipe
 @router.post('/create', response_model=RecipeResponse)
 async def create_recipe(recipe_in: RecipeCreate, db: AsyncSession = Depends(get_db)):
-    return await create_recipe_in_db(db=db, recipe_in=recipe_in)
+    input_ingredient_names = [ing.name for ing in recipe_in.recipe_ingredients]
+
+    existing_recipe, ing_score, text_score = await check_advanced_duplicate(db=db,
+                                                                            title=recipe_in.title,
+                                                                            input_ingredients=input_ingredient_names,
+                                                                            input_instructions=recipe_in.instructions
+                                                                            )
+
+    # reject
+    if existing_recipe:
+        recipe_response_data = RecipeResponse.model_validate(existing_recipe).model_dump()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail={
+                                "message": "A highly similar recipe already exists. Registration is restricted.",
+                                "ingredient_match_rate": f"{int(ing_score * 100)}%",
+                                "instruction_match_rate": f"{int(text_score * 100)}%",
+                                "existing_recipe": recipe_response_data
+                            })
+
+    await create_recipe_in_db(db=db, recipe_in=recipe_in)
+    return {"message": "Recipe created successfully."}
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
@@ -71,6 +96,6 @@ async def get_recipe(recipe_id: int, db: AsyncSession = Depends(get_db)):
     db_recipe = await get_recipe_by_id(db=db, recipe_id=recipe_id)
     
     if db_recipe is None:
-        raise HTTPException(status_code=404, detail="Cannot find the recipe")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find the recipe")
     
     return db_recipe
